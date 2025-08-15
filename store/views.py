@@ -1,11 +1,9 @@
 from django.shortcuts import redirect, render
 from .models import Category, Product
 from django.contrib.auth import login,logout,authenticate
-from django.contrib.auth.models import User
 from django.contrib import messages
-from django.contrib.auth.forms import UserCreationForm
-from django import forms
-from .forms import SignUpForm
+from .forms import SignUpForm, UpdateUserForm, ChangePasswordForm
+from django.contrib.auth.models import User
 
 
 
@@ -63,10 +61,10 @@ def product(request, pk):
    return render(request, 'product.html',{'product':product})
 
 
-def category(request, cat):
-   cat= cat.replace('-', ' ')
+def category(request, foo):
+   foo= foo.replace('-', ' ')
    try:
-      category= Category.objects.get(name=cat)
+      category= Category.objects.get(name=foo)
       products= Product.objects.filter(category=category)
       return render(request, 'category.html', {'products':products, 'category':category})
    except:
@@ -79,5 +77,42 @@ def category(request, cat):
 def category_summary(request):
    categories= Category.objects.all()
    return render(request, 'category_summary.html', {"categories": categories})
+
+
+
+def update_user(request):
+   if request.user.is_authenticated:
+        current_user=User.objects.get(id=request.user.id)
+        form= UpdateUserForm(request.POST or None, instance=current_user) #instance gives the info of current user
+        if form.is_valid():
+          form.save()
+          login(request, current_user)
+          messages.success(request,"Profile Updated successfully!!!!")
+          return redirect('home')
+        return render(request, 'update_user.html',{'form':form})
+   else:
+      messages.error(request,"Ypu must be logged in!!!")
+      return redirect('home')
+   
+
+def update_password(request):
+   if request.user.is_authenticated():
+      current_user=request.User
+      if request.method=="POST":
+         form=ChangePasswordForm(current_user, request.POST)
+         if form.is_valid():
+            form.save()
+            messages.success(request,"Password Changed Sucessfully!!!")
+            return redirect('update_user')
+         else:
+            messages.error(request, "Error in changing Password!!")
+            return redirect("update_password")
+      else:
+         form= ChangePasswordForm(current_user)
+         return redirect('update_password.html',{'form':form})
+   else:
+      messages.error(request,"You must be logged in!!!!")
+      return redirect('home')
+    
       
    

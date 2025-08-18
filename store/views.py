@@ -1,10 +1,11 @@
 from django.shortcuts import redirect, render
-from .models import Category, Product
+from .models import Category, Product, Profile
 from django.contrib.auth import login,logout,authenticate
 from django.contrib import messages
-from .forms import SignUpForm, UpdateUserForm, ChangePasswordForm
+from .forms import SignUpForm, UpdateUserForm, ChangePasswordForm, UserInfoForm
 from django.contrib.auth.models import User
-
+import json
+from cart.cart import Cart
 
 
 def home(request):
@@ -23,6 +24,14 @@ def login_user(request):
     user= authenticate(request, username=username, password=password)
     if user is not None:
       login(request, user)
+      current_user= Profile.objects.get(user__id=request.user.id)
+      saved_cart= current_user.old_cart
+      if saved_cart:
+         converted_cart=json.loads(saved_cart)
+         cart=Cart(request)
+         for key,value in converted_cart.items():
+            cart.db_add(product=key, quantity=value)
+         
       messages.success(request, ("You have been logged in !!!"))
       return redirect('home')
 
@@ -45,8 +54,8 @@ def register_user(request):
         if form.is_valid():
             user = form.save()
             login(request, user)
-            messages.success(request, "You have registered successfully!!!")
-            return redirect('home')
+            messages.success(request, "Username Created successfully!!! Please complete the details")
+            return redirect('update_info')
         else:
             messages.error(request, "Please correct the errors below.")
     else:
@@ -113,6 +122,36 @@ def update_password(request):
    else:
       messages.error(request,"You must be logged in!!!!")
       return redirect('home')
+   
+
+
+def update_info(request):
+   if request.user.is_authenticated:
+        current_user=Profile.objects.get(user__id=request.user.id)
+        form= UserInfoForm(request.POST or None, instance=current_user) #instance gives the info of current user
+        if form.is_valid():
+          form.save()
+          
+          messages.success(request,"Your Info has been Updated!!!!")
+          return redirect('home')
+        return render(request, 'update_info.html',{'form':form})
+   else:
+      messages.error(request,"You must be logged in!!!")
+      return redirect('home')
+   
+
+def search(request):
+   if request.method=="POST":
+      searched= request.POST['searched']
+      searched=Product.objects.filter(name__icontains=searched)
+      if not searched:
+         messages.error(request, "Product does not exist!!!!")
+         return render(request, 'search.html', {})
+      return render(request, 'search.html', {'searched':searched})
+   else:
+      return render(request, 'search.html', {})
+   
+   
     
       
    

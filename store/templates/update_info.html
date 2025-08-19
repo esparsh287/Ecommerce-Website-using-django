@@ -14,11 +14,14 @@
             
               <div class="col-md-6 offset-md-3">
                 <br><br>
+                <strong>Billing Information</strong>
        <form method="post" action="{% url 'update_info' %}">
 
                   {% csrf_token %}
                   {{form.as_p}}
                   <br><br>
+                  <strong>Shipping Information</strong>
+                  {{shipping_form.as_p}}
             
                 <button class="btn btn-success">Update Profile</button>
 

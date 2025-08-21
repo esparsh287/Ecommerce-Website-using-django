@@ -4,8 +4,8 @@
     <header class="bg-dark py-5">
             <div class="container px-4 px-lg-5 my-5">
                 <div class="text-center text-white">
-                    <h1 class="display-4 fw-bolder">Checkout</h1>
-                    <p class="lead fw-normal text-white-50 mb-0">Review your order</p>
+                    <h1 class="display-4 fw-bolder">Processing Order</h1>
+                    <p class="lead fw-normal text-white-50 mb-0">Ypur order is being processed</p>
                 </div>
             </div>
         </header>
@@ -47,15 +47,38 @@
     Shipping Info
   </div>
   <div class="card-body">
-    <form method="post" action="{% url 'billing_info' %}">
-      {% csrf_token %}
-    {{shipping_form.as_p}}
+      
+    Name:{{shipping_info.shipping_full_name}}<br>
+    Email:{{shipping_info.shipping_email}}<br>
+    Address 1:{{shipping_info.shipping_address1}}<br>
+    Address 2:{{shipping_info.shipping_address2}}<br>
+    City:{{shipping_info.shipping_city}}<br>
+    State:{{shipping_info.shipping_state}}<br>
+    Zip Code:{{shipping_info.shipping_zipcode}}<br>
+    Country:{{shipping_info.shipping_country}}<br>
+    <br>
+    <a href="{% url 'checkout %'}" class="btn btn-secondary">Update SHipping</a>
   </div>
  
 </div>
 <br>
-<button type="submit" class="btn btn-secondary">Continue</button>
- </form>
+<div class="card">
+  <div class="card-header">
+    Billing Info
+  </div>
+  <div class="card-body">
+    <form method="post" action="{% url 'process_order' %}">
+      {% csrf_token %}
+      {{billing_form.as_p}}
+    
+    <br>
+  </div>
+ 
+</div>
+
+<button type="submit" class="btn btn-secondary">Pay Now</button>
+</form>
+
 <br><br>
                 </div>
                 </div>

@@ -48,60 +48,105 @@ def billing_info(request):
     return redirect('home')
   
 
+
 def process_order(request):
-    if request.method == "POST":
-        cart = Cart(request)
-        cart_products = cart.get_prods()
-        quantities = cart.get_quants()
-        totals = cart.cart_total()
-
-        payment_form = PaymentForm(request.POST or None)
-        my_shipping = request.session.get('my_shipping')
-
-        full_name = my_shipping['shipping_full_name']
-        email = my_shipping['shipping_email']
-        shipping_address = f"{my_shipping['shipping_address1']}\n{my_shipping['shipping_address2']}\n{my_shipping['shipping_city']}\n{my_shipping['shipping_state']}\n{my_shipping['shipping_zipcode']}\n{my_shipping['shipping_country']}"
-        amount_paid = totals
-
-        if request.user.is_authenticated:
-            user = request.user
-            create_order = Order(user=user, full_name=full_name, email=email, shipping_address=shipping_address, amount_paid=amount_paid)
-            create_order.save()
-            order_id= create_order.pk
-            for product in cart_products():
-               product_id= product.id
-               if product.is_sale:
-                  price=product.sale_price
-               else:
-                  price=product.price
-               
-               for key,value in quantities().items():
-                  if int(key) == product.id:
-                     create_order_item= OrderItem(order= order_id, product= product_id, user= user, quantity= value, price=price)
-                     create_order_item.save()
-
-        else:
-            create_order = Order(full_name=full_name, email=email, shipping_address=shipping_address, amount_paid=amount_paid)
-            create_order.save()
-            order_id= create_order.pk
-            for product in cart_products():
-               product_id= product.id
-               if product.is_sale:
-                  price=product.sale_price
-               else:
-                  price=product.price
-               
-               for key,value in quantities().items():
-                  if int(key) == product.id:
-                     create_order_item= OrderItem(order= order_id, product= product_id, quantity= value, price=price)
-                     create_order_item.save()
-        
-        messages.success(request, "Order placed successfully ✅")
-        return redirect("payment_success")
-
-    else:
+    if request.method != "POST":
         messages.error(request, "Access Denied")
-        return redirect('home')
+        return redirect("home")
+
+    cart = Cart(request)
+    cart_products = cart.get_prods()
+    quantities = cart.get_quants()
+    totals = cart.cart_total()
+
+    my_shipping = request.session.get('my_shipping')
+    if not my_shipping:
+        messages.error(request, "Shipping information missing")
+        return redirect("checkout")
+
+    # Prepare order data
+    full_name = my_shipping.get('shipping_full_name')
+    email = my_shipping.get('shipping_email')
+    shipping_address = (
+        f"{my_shipping.get('shipping_address1')}\n"
+        f"{my_shipping.get('shipping_address2')}\n"
+        f"{my_shipping.get('shipping_city')}\n"
+        f"{my_shipping.get('shipping_state')}\n"
+        f"{my_shipping.get('shipping_zipcode')}\n"
+        f"{my_shipping.get('shipping_country')}"
+    )
+    amount_paid = totals
+
+    # Create order
+    if request.user.is_authenticated:
+        user = request.user
+        order = Order.objects.create(
+            user=user,
+            full_name=full_name,
+            email=email,
+            shipping_address=shipping_address,
+            amount_paid=amount_paid
+        )
+    else:
+        order = Order.objects.create(
+            full_name=full_name,
+            email=email,
+            shipping_address=shipping_address,
+            amount_paid=amount_paid
+        )
+        user = None  # For anonymous users
+
+    # Create order items
+    for product in cart_products:
+        price = product.sale_price if getattr(product, "is_sale", False) else product.price
+        quantity = quantities.get(str(product.id), 1)  # Default 1 if not found
+        OrderItem.objects.create(
+            order=order,
+            product=product,
+            user=user,
+            quantity=quantity,
+            price=price
+        )
+
+    # Clear cart session
+    for key in list(request.session.keys()):
+        if key.startswith("session_key") or key == "my_shipping":
+            del request.session[key]
+
+    messages.success(request, "Order placed successfully ✅")
+    return redirect("home")
+    
+
+
+def not_shipped_dash(request):
+   if request.user.is_authenticated and request.user.is_superuser:
+      orders= Order.objects.filter(shipped=False)
+      return render(request, "payment/not_shipped_dash.html", {'orders':orders})
+   else:
+      messages.success(request, "Access Denied")
+      return redirect('home')
+      
+   
+
+def shipped_dash(request):
+   if request.user.is_authenticated and request.user.is_superuser:
+      orders= Order.objects.filter(shipped=True)
+      return render(request, "payment/shipped_dash.html", {'orders':orders})
+   else:
+      messages.success(request, "Access Denied")
+      return redirect('home')
+   
+
+def orders(request, pk):
+   if request.user.is_authenticated and request.user.is_superuser:
+      order= Order.objects.get(id=pk)
+      items= OrderItem.objects.filter(order= pk)
+      return render(request, 'payment/orders.html', {'order':order, 'items':items})
+   else:
+      messages.success(request, "Access Denied")
+      return redirect('home')
+      
+   
 
 
 
